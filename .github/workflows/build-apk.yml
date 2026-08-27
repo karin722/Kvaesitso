@@ -1,0 +1,66 @@
+name: Build APK
+
+on:
+  push:
+    branches:
+      - main
+      - 'claude/**'
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: 'Product flavor to build'
+        type: choice
+        default: 'default'
+        options:
+          - default
+          - fdroid
+      build_type:
+        description: 'Build type to build'
+        type: choice
+        default: 'debug'
+        options:
+          - debug
+          - release
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Resolve build variant
+        id: variant
+        env:
+          FLAVOR: ${{ inputs.variant || 'default' }}
+          BUILD_TYPE: ${{ inputs.build_type || 'debug' }}
+        run: |
+          capitalize() { echo "$(echo "${1:0:1}" | tr '[:lower:]' '[:upper:]')${1:1}"; }
+          {
+            echo "flavor=${FLAVOR}"
+            echo "build_type=${BUILD_TYPE}"
+            echo "task=assemble$(capitalize "${FLAVOR}")$(capitalize "${BUILD_TYPE}")"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build APK
+        run: ./gradlew ${{ steps.variant.outputs.task }} --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: kvaesitso-${{ steps.variant.outputs.flavor }}-${{ steps.variant.outputs.build_type }}-${{ github.sha }}
+          path: app/app/build/outputs/apk/${{ steps.variant.outputs.flavor }}/${{ steps.variant.outputs.build_type }}/*.apk
+          if-no-files-found: error
