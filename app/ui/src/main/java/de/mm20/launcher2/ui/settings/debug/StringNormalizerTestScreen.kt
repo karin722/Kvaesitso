@@ -34,7 +34,8 @@ fun StringNormalizerTestScreen() {
             var string by remember { mutableStateOf("") }
             val normalizedString by remember {
                 derivedStateOf {
-                    normalizer.normalize(string)
+                    normalizer.normalizeVariants(string).joinToString("
+")
                 }
             }
 

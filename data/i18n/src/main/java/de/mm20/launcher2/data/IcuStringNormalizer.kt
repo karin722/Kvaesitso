@@ -22,8 +22,10 @@ internal class IcuStringNormalizer(
     localeSettings: LocaleSettings,
 ) : StringNormalizer {
 
+    private val japaneseReadings = JapaneseReadings(context, localeSettings)
+
     override val id: String
-        get() = transliteratorId.value
+        get() = "${transliteratorId.value}|${japaneseReadings.id}"
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -51,6 +53,14 @@ internal class IcuStringNormalizer(
         }
 
         return transliterator.transliterate(input).lowercase()
+    }
+
+    override fun normalizeVariants(input: String): List<String> {
+        val normalized = normalize(input)
+        val readings = japaneseReadings.keysOf(input)
+        if (readings.isEmpty()) return listOf(normalized)
+        val variants = (listOf(normalized) + readings).filter { it.isNotBlank() }.distinct()
+        return variants.ifEmpty { listOf(normalized) }
     }
 
     private fun getTransliteratorId(preferenceValue: String?): String {

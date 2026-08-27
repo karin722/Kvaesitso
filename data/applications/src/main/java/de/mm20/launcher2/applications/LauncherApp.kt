@@ -50,9 +50,9 @@ internal data class LauncherApp(
     /**
      * Cached result of the normalized label.
      * First string is the normalizer ID
-     * Second string is the normalized label
+     * Second value are the normalized spellings of the label
      */
-    internal var cachedNormalizerResult: Pair<String, String>? = null
+    internal var cachedNormalizerResult: Pair<String, List<String>>? = null
 
 
     constructor(

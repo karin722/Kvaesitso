@@ -209,6 +209,13 @@ data class LauncherSettingsData internal constructor(
     val localeTransliterator: String? = "",
 
     /**
+     * Whether labels and queries are additionally matched by their Japanese reading, so that
+     * a query in kana finds results that are labelled in latin script and vice versa.
+     * `null` enables it automatically when Japanese is among the device languages.
+     */
+    val localeJapaneseReadings: Boolean? = null,
+
+    /**
      * The ICU id of the primary calendar. `null` to use the default.
      */
     val localePrimaryCalendar: String? = null,

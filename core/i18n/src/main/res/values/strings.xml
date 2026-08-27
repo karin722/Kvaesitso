@@ -1109,6 +1109,8 @@
     <string name="preference_measurement_system_us">United States</string>
     <string name="preference_transliteration">Preferred transliteration</string>
     <string name="preference_transliteration_auto">Automatic</string>
+    <string name="preference_japanese_readings">Japanese readings</string>
+    <string name="preference_value_enabled">Enabled</string>
     <string name="preference_calendar_system">Calendar system</string>
     <string name="preference_calendar_system_primary">Primary calendar</string>
     <string name="preference_calendar_system_secondary">Secondary calendar</string>

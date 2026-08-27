@@ -44,14 +44,11 @@ class WidgetPickerSheetVM(
         .combine(searchQuery) { widgets, query ->
             if (query.isBlank()) return@combine widgets
             withContext(Dispatchers.IO) {
-                val normalizedQuery = stringNormalizer.normalize(query)
+                val normalizedQuery = stringNormalizer.normalizeVariants(query)
                 widgets.filter {
                     ResultScore.from(
-                        query = normalizedQuery,
-                        primaryFields = listOf(
-                            stringNormalizer.normalize(it.label),
-                            it.type
-                        )
+                        queries = normalizedQuery,
+                        primaryFields = stringNormalizer.normalizeVariants(it.label) + it.type
                     ).score >= 0.8f
                 }
             }
@@ -66,10 +63,13 @@ class WidgetPickerSheetVM(
         .combine(searchQuery) { widgets, query ->
             if (query.isBlank()) return@combine widgets
             withContext(Dispatchers.IO) {
-                val normalizedQuery = stringNormalizer.normalize(query)
+                val normalizedQuery = stringNormalizer.normalizeVariants(query)
                 widgets.filter {
-                    val widgetNormalizedLabel = stringNormalizer.normalize(it.loadLabel(packageManager))
-                    if (widgetNormalizedLabel.contains(normalizedQuery)) {
+                    val widgetNormalizedLabels =
+                        stringNormalizer.normalizeVariants(it.loadLabel(packageManager))
+                    if (widgetNormalizedLabels.any { label ->
+                            normalizedQuery.any { q -> label.contains(q) }
+                        }) {
                         return@filter true
                     }
                     val pkg = it.provider.packageName
@@ -78,14 +78,13 @@ class WidgetPickerSheetVM(
                     } catch (e: PackageManager.NameNotFoundException) {
                         return@filter false
                     }
-                    val normalizedAppLabel = stringNormalizer.normalize(appInfo.loadLabel(packageManager).toString())
+                    val normalizedAppLabels = stringNormalizer.normalizeVariants(
+                        appInfo.loadLabel(packageManager).toString()
+                    )
 
                     ResultScore.from(
-                        query = normalizedQuery,
-                        primaryFields = listOf(
-                            widgetNormalizedLabel,
-                            normalizedAppLabel,
-                        )
+                        queries = normalizedQuery,
+                        primaryFields = widgetNormalizedLabels + normalizedAppLabels,
                     ).score >= 0.8f
                 }
             }

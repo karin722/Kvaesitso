@@ -129,13 +129,13 @@ internal class AppShortcutRepositoryImpl(
             return flowOf(persistentListOf())
         }
 
-        val normalizedQuery = stringNormalizer.normalize(query)
+        val normalizedQuery = stringNormalizer.normalizeVariants(query)
         return rawShortcuts.map { shortcuts ->
             val filtered = shortcuts.mapIndexedNotNull { index, normalized ->
                 if (index % 8 == 0) currentCoroutineContext().ensureActive()
 
                 val score = ResultScore.from(
-                    query = normalizedQuery,
+                    queries = normalizedQuery,
                     primaryFields = normalized.normalizedLabels,
                 )
                 if (score.score < 0.8f) return@mapIndexedNotNull null
@@ -231,9 +231,9 @@ internal class AppShortcutRepositoryImpl(
             NormalizedShortcut(
                 info = it,
                 normalizedLabels = listOfNotNull(
-                    it.longLabel?.toString()?.let { l -> stringNormalizer.normalize(l) },
-                    it.shortLabel?.toString()?.let { l -> stringNormalizer.normalize(l) },
-                )
+                    it.longLabel?.toString(),
+                    it.shortLabel?.toString(),
+                ).flatMap { l -> stringNormalizer.normalizeVariants(l) }.distinct()
             )
         }
         normalized
