@@ -35,15 +35,28 @@ internal class IcuStringNormalizer(
         }
         .stateIn(scope, SharingStarted.Eagerly, DisabledTransliteratorId)
 
-    override fun normalize(input: String): String {
-        val id = transliteratorId.value
+    /**
+     * Transliterators are expensive to build and are not thread safe, so every thread that
+     * normalizes strings keeps its own instance per transliterator ID. IDs that cannot be
+     * instantiated are cached as well, so that the failure is only reported once per thread.
+     */
+    private val transliterators = ThreadLocal.withInitial { mutableMapOf<String, Transliterator?>() }
 
+    private fun getTransliterator(id: String): Transliterator? {
+        val cache = transliterators.get()!!
+        if (cache.containsKey(id)) return cache[id]
         val transliterator = try {
             Transliterator.getInstance(id)
         } catch (e: IllegalArgumentException) {
             CrashReporter.logException(e)
             null
         }
+        cache[id] = transliterator
+        return transliterator
+    }
+
+    override fun normalize(input: String): String {
+        val transliterator = getTransliterator(transliteratorId.value)
 
         if (transliterator ==  null) {
             return StringUtils.stripAccents(input.lowercase(Locale.getDefault()))

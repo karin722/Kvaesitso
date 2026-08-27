@@ -65,6 +65,18 @@ value class ResultScore private constructor(private val packed: Long) : Comparab
 
     companion object {
         /**
+         * Jaro-Winkler is stateless, but not documented to be thread safe, so every thread that
+         * scores results gets its own instance instead of allocating one per call.
+         */
+        private val jaroWinklerLocal = ThreadLocal.withInitial { JaroWinkler() }
+
+        /**
+         * Row buffers for [editDistance]. Scoring a single search runs the algorithm once per
+         * result, field and spelling, so the rows are reused instead of being allocated every time.
+         */
+        private val scratchLocal = ThreadLocal.withInitial { Scratch() }
+
+        /**
          * The highest number of typos that can be packed into a score. A result matched with the
          * highest number of typos still scores above the 0.8 threshold that most providers use.
          */
@@ -107,17 +119,28 @@ value class ResultScore private constructor(private val packed: Long) : Comparab
             secondaryFields: Iterable<String> = emptyList(),
             maxTypos: Int? = null,
         ): ResultScore {
-            val jaroWinkler = JaroWinkler()
+            val jaroWinkler = jaroWinklerLocal.get()
             var best = Zero
+            var bestScore = best.score
             for (query in queries) {
                 val typos = (maxTypos ?: maxTyposFor(query.length)).coerceIn(0, MaxTypos)
                 for (term in primaryFields) {
                     val score = score(jaroWinkler, query, term, true, typos)
-                    if (score > best) best = score
+                    val value = score.score
+                    if (value > bestScore) {
+                        best = score
+                        bestScore = value
+                        // A primary field matched literally, nothing can score higher than this.
+                        if (bestScore >= 1f) return best
+                    }
                 }
                 for (term in secondaryFields) {
                     val score = score(jaroWinkler, query, term, false, typos)
-                    if (score > best) best = score
+                    val value = score.score
+                    if (value > bestScore) {
+                        best = score
+                        bestScore = value
+                    }
                 }
             }
             return best
@@ -181,9 +204,11 @@ value class ResultScore private constructor(private val packed: Long) : Comparab
             val n = query.length
             val m = term.length
             if (n == 0) return 0
-            var beforePrevious = IntArray(m + 1)
-            var previous = IntArray(m + 1) { if (anchored) it else 0 }
-            var current = IntArray(m + 1)
+            val rows = scratchLocal.get().forSize(m + 1)
+            var beforePrevious = rows.first
+            var previous = rows.second
+            var current = rows.third
+            for (j in 0..m) previous[j] = if (anchored) j else 0
             for (i in 1..n) {
                 current[0] = i
                 var rowMin = current[0]
@@ -214,6 +239,20 @@ value class ResultScore private constructor(private val packed: Long) : Comparab
                 if (previous[j] < best) best = previous[j]
             }
             return best
+        }
+
+        /**
+         * The three rows [editDistance] alternates between, grown to the longest term seen so far.
+         */
+        private class Scratch {
+            private var rows = Triple(IntArray(0), IntArray(0), IntArray(0))
+
+            fun forSize(size: Int): Triple<IntArray, IntArray, IntArray> {
+                if (rows.first.size < size) {
+                    rows = Triple(IntArray(size), IntArray(size), IntArray(size))
+                }
+                return rows
+            }
         }
 
         val Zero = ResultScore(

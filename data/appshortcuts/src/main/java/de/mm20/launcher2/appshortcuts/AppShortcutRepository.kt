@@ -129,8 +129,8 @@ internal class AppShortcutRepositoryImpl(
             return flowOf(persistentListOf())
         }
 
-        val normalizedQuery = stringNormalizer.normalizeVariants(query)
         return rawShortcuts.map { shortcuts ->
+            val normalizedQuery = stringNormalizer.normalizeVariants(query)
             val filtered = shortcuts.mapIndexedNotNull { index, normalized ->
                 if (index % 8 == 0) currentCoroutineContext().ensureActive()
 

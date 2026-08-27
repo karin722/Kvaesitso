@@ -102,4 +102,39 @@ class ResultScoreTest {
         assertEquals(0, best.typos)
         assertEquals(1f, best.score, 0.0001f)
     }
+
+    @Test
+    fun reusedRowBuffersDoNotLeakBetweenCalls() {
+        // Scoring against a long term grows the internal edit distance buffers. A shorter term
+        // scored afterwards must not see anything left over from the longer one.
+        ResultScore.from("gogle", primaryFields = listOf("google chrome canary developer build"))
+        val reused = ResultScore.from("gogle", primaryFields = listOf("google"))
+
+        var fresh = ResultScore.Zero
+        val thread = Thread { fresh = ResultScore.from("gogle", primaryFields = listOf("google")) }
+        thread.start()
+        thread.join()
+
+        assertEquals(fresh.typos, reused.typos)
+        assertEquals(fresh.isPrefix, reused.isPrefix)
+        assertEquals(fresh.isSubstring, reused.isSubstring)
+        assertEquals(fresh.score, reused.score, 0.0001f)
+    }
+
+    @Test
+    fun aLiteralMatchWinsRegardlessOfFieldOrder() {
+        val matchFirst = ResultScore.from(
+            "google",
+            primaryFields = listOf("google", "google chrome"),
+        )
+        val matchLast = ResultScore.from(
+            "google",
+            primaryFields = listOf("google chrome", "google"),
+        )
+
+        assertEquals(1f, matchFirst.score, 0.0001f)
+        assertEquals(1f, matchLast.score, 0.0001f)
+        assertEquals(0, matchLast.typos)
+        assertTrue(matchLast.isPrefix)
+    }
 }

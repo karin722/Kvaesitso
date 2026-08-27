@@ -34,6 +34,7 @@ import de.mm20.launcher2.search.SearchFilters
 import de.mm20.launcher2.search.SearchResults
 import de.mm20.launcher2.search.SearchService
 import de.mm20.launcher2.search.Searchable
+import de.mm20.launcher2.search.StringNormalizer
 import de.mm20.launcher2.search.Website
 import de.mm20.launcher2.search.data.Calculator
 import de.mm20.launcher2.search.data.UnitConverter
@@ -43,6 +44,7 @@ import de.mm20.launcher2.searchable.VisibilityLevel
 import de.mm20.launcher2.searchactions.actions.SearchAction
 import de.mm20.launcher2.services.favorites.FavoritesService
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
@@ -52,6 +54,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -70,6 +73,7 @@ class SearchVM : ViewModel(), KoinComponent {
     private val locationSearchSettings: LocationSearchSettings by inject()
     private val devicePoseProvider: DevicePoseProvider by inject()
     private val searchFilterSettings: SearchFilterSettings by inject()
+    private val stringNormalizer: StringNormalizer by inject()
 
     val launchOnEnter = searchUiSettings.launchOnEnter
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
@@ -264,6 +268,8 @@ class SearchVM : ViewModel(), KoinComponent {
                     .collectLatest { (results, hiddenKeys) ->
                         previousResults = results
 
+                        val weights = weightsOf(results)
+
                         hiddenResults.clear()
                         workAppResults.clear()
                         privateSpaceAppResults.clear()
@@ -271,26 +277,26 @@ class SearchVM : ViewModel(), KoinComponent {
                         appResults.updateItems(
                             results.apps
                             ?.filterNot { hiddenKeys.contains(it.key) }
-                            ?.applyRanking(query)
+                            ?.applyRanking(query, weights)
                         )
                         appShortcutResults.updateItems(
                             results.shortcuts
                             ?.filterNot { hiddenKeys.contains(it.key) }
-                            ?.applyRanking(query)
+                            ?.applyRanking(query, weights)
                         )
                         fileResults.updateItems(
                             results.files
                             ?.filterNot { hiddenKeys.contains(it.key) }
-                            ?.applyRanking(query)
+                            ?.applyRanking(query, weights)
                         )
 
                         contactResults.updateItems(
                             results.contacts?.filterNot { hiddenKeys.contains(it.key) }
-                                ?.applyRanking(query)
+                                ?.applyRanking(query, weights)
                         )
                         calendarResults.updateItems(
                             results.calendars?.filterNot { hiddenKeys.contains(it.key) }
-                                ?.applyRanking(query)
+                                ?.applyRanking(query, weights)
                         )
                         locationResults.updateItems(
                             results.locations?.filterNot { hiddenKeys.contains(it.key) }
@@ -302,14 +308,14 @@ class SearchVM : ViewModel(), KoinComponent {
                                             }
                                             .distinctBy { it.key }
                                             .toList()
-                                    } ?: locations.applyRanking(query)
+                                    } ?: locations.applyRanking(query, weights)
                                 }
                         )
                         articleResults.updateItems(
-                            results.wikipedia?.applyRanking(query)
+                            results.wikipedia?.applyRanking(query, weights)
                         )
                         websiteResults.updateItems(
-                            results.websites?.applyRanking(query)
+                            results.websites?.applyRanking(query, weights)
                         )
                         calculatorResults.updateItems(results.calculators)
                         unitConverterResults.updateItems(results.unitConverters)
@@ -408,32 +414,68 @@ class SearchVM : ViewModel(), KoinComponent {
         expandedCategory.value = category
     }
 
-    private suspend fun <T : SavableSearchable> List<T>.applyRanking(query: String): List<T> {
+    /**
+     * Ranks results by their search score and by how often they are used. Scores are computed
+     * once per item instead of once per comparison, and the whole ranking runs off the main
+     * thread.
+     */
+    private suspend fun <T : SavableSearchable> List<T>.applyRanking(
+        query: String,
+        weights: Map<String, Double>,
+    ): List<T> {
         if (size <= 1) return this
-        val sequence = asSequence()
-        val weights = searchableRepository.getWeights(map { it.key }).first()
-        val sorted = sequence.sortedWith { a, b ->
-            val aWeight = weights[a.key] ?: 0.0
-            val bWeight = weights[b.key] ?: 0.0
-
-            val aScore = if (a.score.isUnspecified) {
-                ResultScore.from(query = query, primaryFields = listOf(a.labelOverride ?: a.label)).score
+        return withContext(Dispatchers.Default) {
+            // Only results that don't come with a score of their own have to be scored here.
+            val normalizedQuery = if (any { it.score.isUnspecified }) {
+                stringNormalizer.normalizeVariants(query)
             } else {
-                a.score.score
+                null
             }
-
-            val bScore = if (b.score.isUnspecified) {
-                ResultScore.from(query = query, primaryFields = listOf(b.labelOverride ?: b.label)).score
-            } else {
-                b.score.score
+            val ranked = map { item ->
+                val score = if (item.score.isUnspecified && normalizedQuery != null) {
+                    ResultScore.from(
+                        queries = normalizedQuery,
+                        primaryFields = stringNormalizer.normalizeVariants(
+                            item.labelOverride ?: item.label
+                        ),
+                    ).score
+                } else {
+                    item.score.score
+                }
+                val weight = weights[item.key] ?: 0.0
+                item to (score * 0.6f + weight.toFloat() * 0.4f)
             }
-
-            val aTotal = aScore * 0.6f + aWeight.toFloat() * 0.4f
-            val bTotal = bScore * 0.6f + bWeight.toFloat() * 0.4f
-
-            bTotal.compareTo(aTotal)
+            ranked
+                .sortedByDescending { it.second }
+                .map { it.first }
+                .distinctBy { it.key }
         }
-        return sorted.distinctBy { it.key }.toList()
+    }
+
+    /**
+     * Looks up the usage weights of every result in one go. SQLite only takes a limited number of
+     * query arguments, so long lists are looked up in chunks.
+     */
+    private suspend fun weightsOf(results: SearchResults): Map<String, Double> {
+        val keys = mutableSetOf<String>()
+        results.apps?.forEach { keys.add(it.key) }
+        results.shortcuts?.forEach { keys.add(it.key) }
+        results.files?.forEach { keys.add(it.key) }
+        results.contacts?.forEach { keys.add(it.key) }
+        results.calendars?.forEach { keys.add(it.key) }
+        results.locations?.forEach { keys.add(it.key) }
+        results.wikipedia?.forEach { keys.add(it.key) }
+        results.websites?.forEach { keys.add(it.key) }
+
+        if (keys.isEmpty()) return emptyMap()
+        if (keys.size <= MaxWeightQueryKeys) {
+            return searchableRepository.getWeights(keys.toList()).first()
+        }
+        val weights = mutableMapOf<String, Double>()
+        for (chunk in keys.chunked(MaxWeightQueryKeys)) {
+            weights.putAll(searchableRepository.getWeights(chunk).first())
+        }
+        return weights
     }
 
     /**
@@ -447,6 +489,14 @@ class SearchVM : ViewModel(), KoinComponent {
     private fun <T> SnapshotStateList<T>.updateItems(newItems: List<T>?) {
         clear()
         addAll(newItems ?: emptyList())
+    }
+
+    companion object {
+        /**
+         * How many keys are looked up in a single weight query. SQLite allows at most 999 query
+         * arguments.
+         */
+        private const val MaxWeightQueryKeys = 900
     }
 }
 

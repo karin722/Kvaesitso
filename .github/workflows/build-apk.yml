@@ -65,3 +65,15 @@ jobs:
           name: kvaesitso-${{ steps.variant.outputs.flavor }}-${{ steps.variant.outputs.build_type }}-${{ github.sha }}
           path: app/app/build/outputs/apk/${{ steps.variant.outputs.flavor }}/${{ steps.variant.outputs.build_type }}/*.apk
           if-no-files-found: error
+
+      # Runs after the upload, so that a failing test still leaves a downloadable APK behind.
+      - name: Run unit tests
+        run: ./gradlew :core:base:testDebugUnitTest :core:ktx:testDebugUnitTest :data:locations:testDebugUnitTest --stacktrace
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ github.sha }}
+          path: '**/build/reports/tests/**'
+          if-no-files-found: ignore

@@ -40,51 +40,89 @@ class WidgetPickerSheetVM(
         widgetsService.getAvailableBuiltInWidgets()
             .shareIn(viewModelScope, SharingStarted.WhileSubscribed(100))
 
-    val builtInWidgets = allBuiltInWidgets
+    private val normalizedBuiltInWidgets = allBuiltInWidgets
+        .map { widgets ->
+            withContext(Dispatchers.Default) {
+                widgets.map {
+                    it to (stringNormalizer.normalizeVariants(it.label) + it.type)
+                }
+            }
+        }
+
+    val builtInWidgets = normalizedBuiltInWidgets
         .combine(searchQuery) { widgets, query ->
-            if (query.isBlank()) return@combine widgets
-            withContext(Dispatchers.IO) {
+            if (query.isBlank()) return@combine widgets.map { it.first }
+            withContext(Dispatchers.Default) {
                 val normalizedQuery = stringNormalizer.normalizeVariants(query)
-                widgets.filter {
-                    ResultScore.from(
-                        queries = normalizedQuery,
-                        primaryFields = stringNormalizer.normalizeVariants(it.label) + it.type
-                    ).score >= 0.8f
+                widgets.mapNotNull { (widget, labels) ->
+                    widget.takeIf {
+                        ResultScore.from(
+                            queries = normalizedQuery,
+                            primaryFields = labels,
+                        ).score >= 0.8f
+                    }
                 }
             }
         }.shareIn(viewModelScope, SharingStarted.WhileSubscribed(100))
 
+    /**
+     * A widget provider together with everything that is needed to search and group it. Loading a
+     * label goes through the package manager, so it is done once per provider instead of once per
+     * keystroke.
+     */
+    private class NormalizedAppWidget(
+        val provider: AppWidgetProviderInfo,
+        val label: String,
+        /**
+         * Label of the app the widget belongs to, or null if the app could not be resolved.
+         */
+        val appName: String?,
+        val normalizedLabels: List<String>,
+        val normalizedAppLabels: List<String>?,
+    )
+
     private val allAppWidgets = flow {
         val widgets = widgetsService.getAppWidgetProviders()
         emit(widgets)
-    }.shareIn(viewModelScope, SharingStarted.WhileSubscribed(100))
+    }
+        .map { widgets ->
+            withContext(Dispatchers.IO) {
+                widgets.map { provider ->
+                    val label = provider.loadLabel(packageManager)
+                    val appName = try {
+                        packageManager.getApplicationInfo(provider.provider.packageName, 0)
+                            .loadLabel(packageManager).toString()
+                    } catch (e: PackageManager.NameNotFoundException) {
+                        null
+                    }
+                    NormalizedAppWidget(
+                        provider = provider,
+                        label = label,
+                        appName = appName,
+                        normalizedLabels = stringNormalizer.normalizeVariants(label),
+                        normalizedAppLabels = appName?.let { stringNormalizer.normalizeVariants(it) },
+                    )
+                }
+            }
+        }
+        .shareIn(viewModelScope, SharingStarted.WhileSubscribed(100))
 
     private val filteredAppWidgets = allAppWidgets
         .combine(searchQuery) { widgets, query ->
             if (query.isBlank()) return@combine widgets
-            withContext(Dispatchers.IO) {
+            withContext(Dispatchers.Default) {
                 val normalizedQuery = stringNormalizer.normalizeVariants(query)
                 widgets.filter {
-                    val widgetNormalizedLabels =
-                        stringNormalizer.normalizeVariants(it.loadLabel(packageManager))
-                    if (widgetNormalizedLabels.any { label ->
+                    if (it.normalizedLabels.any { label ->
                             normalizedQuery.any { q -> label.contains(q) }
                         }) {
                         return@filter true
                     }
-                    val pkg = it.provider.packageName
-                    val appInfo = try {
-                        packageManager.getApplicationInfo(pkg, 0)
-                    } catch (e: PackageManager.NameNotFoundException) {
-                        return@filter false
-                    }
-                    val normalizedAppLabels = stringNormalizer.normalizeVariants(
-                        appInfo.loadLabel(packageManager).toString()
-                    )
+                    val normalizedAppLabels = it.normalizedAppLabels ?: return@filter false
 
                     ResultScore.from(
                         queries = normalizedQuery,
-                        primaryFields = widgetNormalizedLabels + normalizedAppLabels,
+                        primaryFields = it.normalizedLabels + normalizedAppLabels,
                     ).score >= 0.8f
                 }
             }
@@ -100,19 +138,16 @@ class WidgetPickerSheetVM(
         withContext(Dispatchers.Default) {
             widgets
                 .sortedWith { el1, el2 ->
-                    collator.compare(el1.loadLabel(packageManager), el2.loadLabel(packageManager))
+                    collator.compare(el1.label, el2.label)
                 }
                 .groupBy {
-                    it.provider.packageName
+                    it.provider.provider.packageName
                 }
                 .map {
                     val pkg = it.key
-                    val appInfo = try {
-                        packageManager.getApplicationInfo(pkg, 0)
-                    } catch (e: PackageManager.NameNotFoundException) {
-                        return@map AppWidgetGroup("", pkg, emptyList())
-                    }
-                    AppWidgetGroup(appInfo.loadLabel(packageManager).toString(), pkg, it.value)
+                    val appName = it.value.firstNotNullOfOrNull { widget -> widget.appName }
+                        ?: return@map AppWidgetGroup("", pkg, emptyList())
+                    AppWidgetGroup(appName, pkg, it.value.map { widget -> widget.provider })
                 }
                 .sortedWith { el1, el2 ->
                     collator.compare(el1.appName, el2.appName)
