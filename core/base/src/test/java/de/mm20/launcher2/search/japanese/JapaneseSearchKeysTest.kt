@@ -69,9 +69,10 @@ class JapaneseSearchKeysTest {
 
     @Test
     fun ignoresWhatItCannotRead() {
-        check("楽天")
         check("")
         check("!?")
+        // 兀 is a kanji, but not one in common use, so it is not in the reading table
+        check("兀")
     }
 
     /**
@@ -123,6 +124,15 @@ class JapaneseSearchKeysTest {
         assertFinds("line", "LINE")
         assertFinds("goog", "Google")
         assertFinds("らいん", "らいん")
+    }
+
+    @Test
+    fun readsKanji() {
+        check("楽天", "rakuten")
+        check("時計", "tokei")
+        check("設定", "setei")
+        check("電卓", "dentaku")
+        check("地図", "tizu")
     }
 
     @Test
