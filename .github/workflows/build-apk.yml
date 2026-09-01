@@ -70,6 +70,31 @@ jobs:
       - name: Run unit tests
         run: ./gradlew :core:base:testDebugUnitTest :core:ktx:testDebugUnitTest :data:locations:testDebugUnitTest --stacktrace
 
+      # Annotations are readable without signing in, unlike the log and the artifacts, which
+      # is what makes a failure here diagnosable from the outside.
+      - name: Annotate failing tests
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+
+          failures = 0
+          for path in glob.glob('**/build/test-results/**/*.xml', recursive=True):
+              try:
+                  root = ET.parse(path).getroot()
+              except Exception:
+                  continue
+              for case in root.iter('testcase'):
+                  for problem in list(case.iter('failure')) + list(case.iter('error')):
+                      message = (problem.get('message') or problem.text or '').strip()
+                      message = message.replace('%', '%25')
+                      message = '%0A'.join(message.splitlines())[:1500]
+                      title = '%s.%s' % (case.get('classname'), case.get('name'))
+                      print('::error title=%s::%s' % (title, message))
+                      failures += 1
+          print('%d failing test(s)' % failures)
+          PY
+
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@v4
