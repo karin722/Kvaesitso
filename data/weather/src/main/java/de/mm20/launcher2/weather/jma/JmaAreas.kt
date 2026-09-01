@@ -145,22 +145,21 @@ internal class JmaAreas(private val index: JmaAreaIndex) {
         private var cached: JmaAreas? = null
         private var cachedAt = 0L
 
-        suspend fun get(api: JmaApi): JmaAreas? {
-            mutex.withLock {
-                val existing = cached
-                if (existing != null && System.currentTimeMillis() - cachedAt < CacheDuration) {
-                    return existing
-                }
-                val index = try {
-                    api.areas()
-                } catch (e: Exception) {
-                    CrashReporter.logException(e)
-                    return existing
-                }
-                val areas = JmaAreas(index)
-                cached = areas
+        suspend fun get(api: JmaApi): JmaAreas? = mutex.withLock {
+            val existing = cached
+            if (existing != null && System.currentTimeMillis() - cachedAt < CacheDuration) {
+                return@withLock existing
+            }
+            val index = try {
+                api.areas()
+            } catch (e: Exception) {
+                // Keep whatever is cached, however old, over having no areas at all
+                CrashReporter.logException(e)
+                return@withLock existing
+            }
+            JmaAreas(index).also {
+                cached = it
                 cachedAt = System.currentTimeMillis()
-                return areas
             }
         }
 
