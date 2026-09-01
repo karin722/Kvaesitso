@@ -6,4 +6,5 @@
     <string name="apache_license_name" translatable="false">Apache license 2.0</string>
     <string name="gpl3_name" translatable="false">GNU General Public License Version 3</string>
     <string name="open_font_license_name" translatable="false">SIL OPEN FONT LICENSE</string>
+    <string name="cc_by_sa_4_name" translatable="false">Creative Commons Attribution-ShareAlike 4.0</string>
 </resources>

@@ -98,6 +98,21 @@ internal object Kana {
     }
 
     /**
+     * Whether [c] is a character that has to be looked up in [JapaneseDictionary] to be read.
+     * [IterationMark] is included: it stands for the character before it, and is read like it.
+     */
+    fun isKanji(c: Char): Boolean {
+        val code = c.code
+        return (code in 0x4E00..0x9FFF) ||
+                (code in 0x3400..0x4DBF) ||
+                (code in 0xF900..0xFAFF) ||
+                c == IterationMark
+    }
+
+    /** 々, which repeats the character before it (時々, 人々). */
+    const val IterationMark = '々'
+
+    /**
      * Folds hiragana, half width katakana and full width ASCII into katakana / ASCII, so that
      * everything downstream only has to deal with a single representation.
      */

@@ -198,6 +198,22 @@ val OpenSourceLicenses = arrayOf(
         copyrightNote = "Copyright 2024 Chris Banes",
     ),
     OpenSourceLibrary(
+        name = "KANJIDIC2",
+        description = "Readings of Japanese characters, used to find an app whose name is written in kanji.",
+        licenseName = R.string.cc_by_sa_4_name,
+        licenseText = R.raw.license_cc_by_sa_4,
+        url = "https://www.edrdg.org/wiki/index.php/KANJIDIC_Project",
+        copyrightNote = "Copyright Electronic Dictionary Research and Development Group",
+    ),
+    OpenSourceLibrary(
+        name = "JMdict",
+        description = "Readings of Japanese words, used to find an app whose name is written in kanji.",
+        licenseName = R.string.cc_by_sa_4_name,
+        licenseText = R.raw.license_cc_by_sa_4,
+        url = "https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project",
+        copyrightNote = "Copyright Electronic Dictionary Research and Development Group",
+    ),
+    OpenSourceLibrary(
         name = "Smartspacer Client SDK",
         description = "A library to integrate Smartspacer in your app",
         licenseName = R.string.apache_license_name,

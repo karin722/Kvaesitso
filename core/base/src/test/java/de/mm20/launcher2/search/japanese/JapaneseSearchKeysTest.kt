@@ -124,4 +124,49 @@ class JapaneseSearchKeysTest {
         assertFinds("goog", "Google")
         assertFinds("らいん", "らいん")
     }
+
+    @Test
+    fun kanaQueryFindsKanjiLabel() {
+        assertFinds("とけい", "時計")
+        assertFinds("せってい", "設定")
+        assertFinds("でんたく", "電卓")
+        assertFinds("しゃしん", "写真")
+        assertFinds("ちず", "地図")
+        assertFinds("おんがく", "音楽")
+        assertFinds("てんき", "天気")
+        assertFinds("でんわ", "電話")
+        assertFinds("かめら", "カメラ")
+        assertFinds("れんらくさき", "連絡先")
+        assertFinds("かけいぼ", "家計簿")
+        assertFinds("けいさんき", "計算機")
+        assertFinds("ときどき", "時々")
+    }
+
+    @Test
+    fun latinQueryFindsKanjiLabel() {
+        assertFinds("tokei", "時計")
+        assertFinds("settei", "設定")
+        assertFinds("dentaku", "電卓")
+        assertFinds("chizu", "地図")
+        assertFinds("ongaku", "音楽")
+        assertFinds("denwa", "電話")
+    }
+
+    @Test
+    fun readsKanjiWordByWord() {
+        // None of these are single dictionary words, they are read as the words they are made of
+        assertFinds("のりかえあんない", "乗換案内")
+        assertFinds("らくてんいちば", "楽天市場")
+        assertFinds("めざまし", "目覚まし時計")
+        assertFinds("ぎんこう", "三菱UFJ銀行")
+        assertFinds("てんきよほう", "天気予報")
+    }
+
+    @Test
+    fun findsKanjiLabelByItsPrefix() {
+        assertFinds("とけ", "時計")
+        assertFinds("せって", "設定")
+        assertFinds("でんた", "電卓")
+    }
+
 }
