@@ -16,6 +16,7 @@ import de.mm20.launcher2.preferences.weather.WeatherLocation
 import de.mm20.launcher2.preferences.weather.WeatherSettings
 import de.mm20.launcher2.weather.breezy.BreezyWeatherProvider
 import de.mm20.launcher2.weather.brightsky.BrightSkyProvider
+import de.mm20.launcher2.weather.jma.JmaProvider
 import de.mm20.launcher2.weather.metno.MetNoProvider
 import de.mm20.launcher2.weather.openweathermap.OpenWeatherMapProvider
 import kotlinx.coroutines.*
@@ -163,6 +164,12 @@ internal class WeatherRepositoryImpl(
             WeatherProviderInfo(
                 BrightSkyProvider.Id,
                 context.getString(R.string.provider_brightsky)
+            )
+        )
+        providers.add(
+            WeatherProviderInfo(
+                JmaProvider.Id,
+                context.getString(R.string.provider_jma)
             )
         )
         if (OpenWeatherMapProvider.isAvailable(context)) {

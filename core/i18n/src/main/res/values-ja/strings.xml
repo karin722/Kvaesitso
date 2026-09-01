@@ -291,4 +291,5 @@
     <string name="preference_transliteration_auto">自動</string>
     <string name="preference_japanese_readings">日本語の読みで検索</string>
     <string name="preference_value_enabled">有効</string>
+    <string name="provider_jma">気象庁（日本国内のみ）</string>
 </resources>
