@@ -298,7 +298,9 @@ internal class JmaProvider(
         val forecasts = mutableListOf<Forecast>()
         for (slot in slots(date)) {
             val temperature = temperatureAt(slot) ?: continue
-            val measured = observedToday?.values?.takeIf { observedToday.timestamp == slot }
+            val measured =
+                if (observedToday != null && observedToday.timestamp == slot) observedToday.values
+                else null
             forecasts.add(
                 forecast(
                     timestamp = slot,
@@ -360,7 +362,7 @@ internal class JmaProvider(
      * the condition the icon stands for, translated like every other provider's.
      */
     private fun conditionOf(weather: Weather?, icon: Int): String {
-        val text = weather?.text?.replace('　', ' ')?.trim()?.replace(Regex(" +"), " ")
+        val text = weather?.text?.replace('　', ' ')?.trim()?.replace(Spaces, " ")
         if (!text.isNullOrEmpty() && Locale.getDefault().language == "ja") return text
         return context.getString(
             when (icon) {
@@ -405,6 +407,9 @@ internal class JmaProvider(
         internal const val Id = "jma"
 
         private const val KelvinOffset = 273.15
+
+        /** JMA pads its wording with full width spaces, which collapse into one. */
+        private val Spaces = Regex(" +")
 
         /** Japan is one time zone, and JMA reports in it. */
         private val Zone: ZoneId = ZoneId.of("Asia/Tokyo")

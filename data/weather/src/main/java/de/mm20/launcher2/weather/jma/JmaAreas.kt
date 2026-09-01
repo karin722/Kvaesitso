@@ -66,9 +66,11 @@ internal class JmaAreas(private val index: JmaAreaIndex) {
      */
     fun resolve(prefecture: String?, municipality: String?): Place? {
         if (municipality != null) {
-            val candidates = index.class20s.entries.filter {
-                it.value.name == municipality || it.value.name.startsWith(municipality)
-            }
+            // A municipality JMA forecasts in parts is listed as 横浜市北部, 横浜市南部 and so
+            // on, which the geocoder's 横浜市 only prefixes. An exact name still wins.
+            val candidates = index.class20s.entries
+                .filter { it.value.name.startsWith(municipality) }
+                .sortedBy { if (it.value.name == municipality) 0 else 1 }
             val match = candidates.firstOrNull { prefecture == null || inPrefecture(it.key, prefecture) }
                 ?: candidates.firstOrNull()
             if (match != null) return placeOf(match.key, match.value)
