@@ -6,7 +6,7 @@
     <string name="menu_favorites_pin">Kitűzés a kedvencekhez</string>
     <string name="menu_favorites_unpin">Kitűzés megszüntetése</string>
     <string name="menu_back">Vissza</string>
-    <string name="menu_app_info">Információ az alkalmazásról</string>
+    <string name="menu_app_info">Alkalmazásadatok</string>
     <string name="menu_launch">Futtatás</string>
     <string name="menu_customize">Testreszabás</string>
     <string name="action_undo">Visszavonás</string>
@@ -144,9 +144,7 @@
     <string name="wind_east_south_east">Kelet-délkelet</string>
     <string name="wind_south_east">Délkelet</string>
     <string name="wind_north_north_west">Észak-északnyugat</string>
-    <string name="disclaimer_currency_converter">Az Európai Központi Bank által naponta egyszer közzétett árfolyamok. Az összes információ „úgy, ahogy van”, mindenféle garancia nélkül. Ezen információkért semmilyen felelősséget nem vállalunk.
-\n
-\nUtoljára frissítve: %1$s</string>
+    <string name="disclaimer_currency_converter">Az Európai Központi Bank által naponta egyszer közzétett árfolyamok. Az összes adat „úgy, ahogy van”, mindenféle garancia nélkül. Ezen adakoért semmilyen felelősséget nem vállalunk. \n \nUtoljára frissítve: %1$s</string>
     <string name="music_widget_no_data">Még nem játszott le média tartalmat</string>
     <string name="weather_condition_sleetshowers">Havas eső záporok</string>
     <string name="weather_condition_heavysleet">Heves havas eső</string>
@@ -169,7 +167,7 @@
     <string name="weather_widget_set_location">Hely kiválasztása</string>
     <string name="weather_location_search_no_result">A hely nem található</string>
     <string name="missing_permission_appshortcuts_search">Állítsa be a(z) %1$s alkalmazást alapértelmezett indítóként a telepített alkalmazások kereséséhez.</string>
-    <string name="preference_colors_default">Alapértelmezett</string>
+    <string name="preference_colors_default">Alapértelmezés</string>
     <string name="preference_force_themed_icons">Ikonok kényszerítése a témához</string>
     <string name="missing_permission_music_widget">A médialejátszás vezérléséhez értesítési hozzáférés szükséges</string>
     <string name="missing_permission_calendar_search">A naptárban való kereséshez naptárengedély szükséges</string>
@@ -226,7 +224,7 @@
     <string name="preference_debug_reinstall_iconpacks_summary">Ikoncsomag gyorsítótárának törlése és újraépítése</string>
     <string name="preference_themed_icons_summary">Ikonok színezése az alkalmazás színösszeállításával</string>
     <string name="open_webpage">Weboldal megnyitása</string>
-    <string name="preference_screen_about_summary">Alkalmazás- és licencinformációk</string>
+    <string name="preference_screen_about_summary">Alkalmazás- és licencadatok</string>
     <string name="preference_screen_appearance_summary">Megjelenés testreszabása</string>
     <string name="preference_weather_provider">Szolgáltató</string>
     <string name="preference_screen_integrations">Integrációk</string>
@@ -317,7 +315,7 @@
     <string name="preference_clockwidget_alarm_part_summary">Azon riasztások megjelenítése, amelyek a következő 8 órán belül megszólalnak</string>
     <string name="preference_logs">Naplók</string>
     <string name="preference_logs_summary">Alkalmazásnaplók megtekintése és exportálása</string>
-    <string name="preference_screen_buildinfo_summary">További információ az alkalmazás ezen verziójáról</string>
+    <string name="preference_screen_buildinfo_summary">További tudnivalók az alkalmazás ezen verziójáról</string>
     <string name="preference_search_bar_launch_on_enter">Keresés enterrel</string>
     <string name="preference_hidden_items_summary">Kizárt alkalmazások és keresési eredmények kezelése</string>
     <string name="preference_wikipedia_customurl">Wikipédia-webcím</string>
@@ -340,13 +338,13 @@
     <string name="preference_search_result_ordering_weight_factor_default">Kiegyensúlyozott</string>
     <string name="note_widget_action_unlink_file">Leválasztás</string>
     <string name="note_widget_conflict_keep_selected">Maradjon kiválasztva</string>
-    <string name="preference_screen_buildinfo">Összeállítási információk</string>
+    <string name="preference_screen_buildinfo">Összeállítási adatok</string>
     <string name="preference_screen_debug">Hibakeresés</string>
     <string name="battery_part_charging">⚡︎ Töltés ⚡︎</string>
     <string name="search_action_email">E-mail</string>
     <string name="search_action_alarm">Riasztás beállítása</string>
     <string name="create_search_action_type">Milyen típusú műveletet szeretne létrehozni?</string>
-    <string name="more_information">További információ</string>
+    <string name="more_information">További tudnivalók</string>
     <string name="open_search_swipe_right">Jobbra húzás</string>
     <string name="gesture_action_recents">Legutóbbi alkalmazások</string>
     <string name="preference_notification_badges">Értesítési jelvények</string>
@@ -474,7 +472,7 @@
     <string name="preference_about_license_summary">Licensed under the GNU General Public License 3.0</string>
     <string name="preference_category_grid">Rács</string>
     <string name="preference_screen_clockwidget">Óra</string>
-    <string name="preference_clockwidget_layout_vertical">Alapértelmezett</string>
+    <string name="preference_clockwidget_layout_vertical">Alapértelmezés</string>
     <string name="preference_clockwidget_layout_horizontal">Kompakt</string>
     <string name="preference_clock_widget_fill_height">Képernyő magasságának kitöltése</string>
     <string name="preference_clock_widget_alignment">Igazítás</string>
@@ -526,7 +524,7 @@
     <string name="restore_invalid_file">A kiválasztott fájl nem tűnik biztonsági mentésnek. Biztosan a megfelelő fájlt választotta ki?</string>
     <string name="restore_incompatible_file">Ez a biztonsági mentés a(z) %1$s egy másik verziójával készült, és ezzel a verzióval nem állítható vissza.</string>
     <string name="restore_complete">A biztonsági mentés visszaállítása megtörtént.</string>
-    <string name="icon_picker_default_icon">Alapértelmezett</string>
+    <string name="icon_picker_default_icon">Alapértelmezés</string>
     <string name="icon_picker_suggestions">Javaslatok</string>
     <string name="favorites">Kedvencek</string>
     <string name="search_action_call">Hívás</string>
@@ -543,7 +541,7 @@
     <string name="confirmation_delete_color_scheme">Biztosan törölni szeretné a(z) %1$s nevű színösszeállítást?</string>
     <string name="theme_color_scheme_custom_color">Egyéni</string>
     <string name="theme_color_scheme_palette_color">Paletta</string>
-    <string name="preference_restore_default">Visszaállítás alapértelmezettre</string>
+    <string name="preference_restore_default">Visszaállítás alapértelmezésre</string>
     <string name="import_theme_apply">Téma alkalmazása</string>
     <string name="shortcut_label_unavailable">Nem érhető el</string>
     <string name="tag_exists_error">Egy ilyen nevű címke már létezik</string>
@@ -825,7 +823,7 @@
     <string name="bad_configuration_title">Gratulálunk, kizárta saját magát!</string>
     <string name="bad_configuration_summary">Felfedezte a beállítások olyan kombinációját, amely a keresést és a beállításokat is elérhetetlenné teszi — gyakorlatilag kizárja Önt az indítóból</string>
     <string name="preference_screen_shapes">Alakzatok</string>
-    <string name="preference_shapes_default">Alapértelmezett</string>
+    <string name="preference_shapes_default">Alapértelmezés</string>
     <string name="preference_shapes_extra_round">Nagyon lekerekített</string>
     <string name="preference_shapes_rect">Négyszögletes</string>
     <string name="preference_shapes_base">Alap alakzat</string>
@@ -839,7 +837,7 @@
     <string name="theme_import_title">Téma importálása</string>
     <string name="import_theme_contents">Tartalom</string>
     <string name="preference_colors_high_contrast">Nagy kontraszt</string>
-    <string name="preference_transparencies_default">Alapértelmezett</string>
+    <string name="preference_transparencies_default">Alapértelmezés</string>
     <string name="preference_screen_transparencies">Átlátszóság</string>
     <string name="preference_transparencies_semi_transparent">Félig átlátszó</string>
     <string name="confirmation_delete_transparencies_scheme">Valóban törölni akarja a(z) %1$s átlátszósági sémát?</string>
