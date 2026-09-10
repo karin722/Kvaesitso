@@ -50,13 +50,21 @@ jobs:
           BUILD_TYPE: ${{ inputs.build_type || 'debug' }}
         run: |
           capitalize() { echo "$(echo "${1:0:1}" | tr '[:lower:]' '[:upper:]')${1:1}"; }
+          # The build date, plus a two digit run counter so that two builds on the same day
+          # still differ. Keeps the scheme (and the order) of the hard coded default in
+          # app/app/build.gradle.kts, and stays well below the 2147483647 an Int can hold.
           {
             echo "flavor=${FLAVOR}"
             echo "build_type=${BUILD_TYPE}"
             echo "task=assemble$(capitalize "${FLAVOR}")$(capitalize "${BUILD_TYPE}")"
+            echo "version_code=$(date -u +%Y%m%d)$(printf '%02d' $((GITHUB_RUN_NUMBER % 100)))"
+            echo "version_suffix=-${GITHUB_SHA:0:7}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Build APK
+        env:
+          VERSION_CODE_OVERRIDE: ${{ steps.variant.outputs.version_code }}
+          VERSION_NAME_SUFFIX: ${{ steps.variant.outputs.version_suffix }}
         run: ./gradlew ${{ steps.variant.outputs.task }} --stacktrace
 
       - name: Upload APK

@@ -50,6 +50,7 @@ android {
     buildTypes {
         release {
             applicationIdSuffix = ".release"
+            versionNameSuffix = System.getenv("VERSION_NAME_SUFFIX")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -60,6 +61,8 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             isDebuggable = true
+            // Set by CI, so that a build can be told apart from the one it replaces.
+            versionNameSuffix = System.getenv("VERSION_NAME_SUFFIX")
         }
         create("nightly") {
             initWith(getByName("release"))
