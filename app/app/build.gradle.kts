@@ -51,6 +51,9 @@ android {
         release {
             applicationIdSuffix = ".release"
             versionNameSuffix = System.getenv("VERSION_NAME_SUFFIX")
+            if (!System.getenv("KEYSTORE_PASSWORD").isNullOrEmpty()) {
+                signingConfig = signingConfigs.findByName("gh-actions")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -63,6 +66,12 @@ android {
             isDebuggable = true
             // Set by CI, so that a build can be told apart from the one it replaces.
             versionNameSuffix = System.getenv("VERSION_NAME_SUFFIX")
+            // A throwaway CI runner generates a new debug key on every run, and an APK signed
+            // with a new key cannot be installed over the one before it. Sign with the CI key
+            // instead, whenever one is configured.
+            if (!System.getenv("KEYSTORE_PASSWORD").isNullOrEmpty()) {
+                signingConfig = signingConfigs.findByName("gh-actions")
+            }
         }
         create("nightly") {
             initWith(getByName("release"))
