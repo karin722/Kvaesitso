@@ -91,6 +91,24 @@ abstract class SharedLauncherActivity(
 
     internal val enterHomeTransitionManager = EnterHomeTransitionManager()
 
+    // LauncherActivity handles orientation/screenSize/uiMode changes itself (see
+    // android:configChanges in the manifest) instead of being recreated, because on some OEM
+    // skins (notably Samsung OneUI) the extra config-change relaunches triggered during
+    // gesture-based home/recents transitions race with the transition's own relaunch and crash
+    // with "Can't start activity that is not stopped." (see MM2-0/Kvaesitso#790, #1464). This
+    // state must therefore be refreshed manually in onConfigurationChanged.
+    private val windowSizeState = mutableStateOf(currentWindowSize())
+
+    private fun currentWindowSize(): Size = Resources.getSystem().displayMetrics.let {
+        Size(it.widthPixels.toFloat(), it.heightPixels.toFloat())
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        windowSizeState.value = currentWindowSize()
+        viewModel.setSystemInDarkMode(newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         if (isAtLeastApiLevel(29)) {
@@ -107,10 +125,6 @@ abstract class SharedLauncherActivity(
 
         val wallpaperManager = WallpaperManager.getInstance(this)
 
-        val windowSize = Resources.getSystem().displayMetrics.let {
-            Size(it.widthPixels.toFloat(), it.heightPixels.toFloat())
-        }
-
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         viewModel.setSystemInDarkMode(resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES)
@@ -118,6 +132,7 @@ abstract class SharedLauncherActivity(
         val bottomSheetManager = LauncherBottomSheetManager(this)
 
         setContent {
+            val windowSize by windowSizeState
             val snackbarHostState = remember { SnackbarHostState() }
             val wallpaperColors by wallpaperColorsAsState()
             val dimBackground by viewModel.dimBackground.collectAsState()
