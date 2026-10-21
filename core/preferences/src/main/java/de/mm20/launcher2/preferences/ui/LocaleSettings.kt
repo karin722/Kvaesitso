@@ -36,6 +36,18 @@ class LocaleSettings internal constructor(
         }
     }
 
+    /**
+     * `null` means to enable Japanese readings automatically, based on the device languages.
+     */
+    val japaneseReadings
+        get() = launcherDataStore.data.map { it.localeJapaneseReadings }
+
+    fun setJapaneseReadings(japaneseReadings: Boolean?) {
+        launcherDataStore.update {
+            it.copy(localeJapaneseReadings = japaneseReadings)
+        }
+    }
+
     val primaryCalendar
         get() = launcherDataStore.data.map { it.localePrimaryCalendar }
 

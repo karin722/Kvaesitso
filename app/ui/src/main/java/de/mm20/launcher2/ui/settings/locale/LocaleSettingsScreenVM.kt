@@ -27,6 +27,11 @@ class LocaleSettingsScreenVM : ViewModel(), KoinComponent {
         localeSettings.setTransliterator(transliterator)
     }
 
+    val japaneseReadings = localeSettings.japaneseReadings
+    fun setJapaneseReadings(japaneseReadings: Boolean?) {
+        localeSettings.setJapaneseReadings(japaneseReadings)
+    }
+
     val calendars = combine(localeSettings.primaryCalendar, localeSettings.secondaryCalendar) {
         it.toImmutableList()
     }

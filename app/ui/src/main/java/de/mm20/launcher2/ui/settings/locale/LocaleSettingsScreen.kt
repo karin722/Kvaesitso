@@ -43,6 +43,7 @@ fun LocaleSettingsScreen() {
     val timeFormat by viewModel.timeFormat.collectAsStateWithLifecycle(null)
     val measurementSystem by viewModel.measurementSystem.collectAsStateWithLifecycle(null)
     val transliterator by viewModel.transliterator.collectAsStateWithLifecycle(null)
+    val japaneseReadings by viewModel.japaneseReadings.collectAsStateWithLifecycle(null)
     val calendars by viewModel.calendars.collectAsStateWithLifecycle(emptyList())
     val currencies by viewModel.currencies.collectAsStateWithLifecycle(null)
 
@@ -176,6 +177,19 @@ fun LocaleSettingsScreen() {
                         },
                     )
                 }
+                ListPreference(
+                    icon = R.drawable.text_fields_24px,
+                    title = stringResource(R.string.preference_japanese_readings),
+                    value = japaneseReadings,
+                    onValueChanged = {
+                        viewModel.setJapaneseReadings(it)
+                    },
+                    items = listOf<Pair<String, Boolean?>>(
+                        stringResource(R.string.preference_transliteration_auto) to null,
+                        stringResource(R.string.preference_value_enabled) to true,
+                        stringResource(R.string.preference_value_disabled) to false,
+                    ),
+                )
             }
         }
         item {

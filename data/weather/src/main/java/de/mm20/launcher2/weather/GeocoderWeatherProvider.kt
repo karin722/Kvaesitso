@@ -1,6 +1,7 @@
 package de.mm20.launcher2.weather
 
 import android.content.Context
+import android.location.Address
 import android.location.Geocoder
 import de.mm20.launcher2.crashreporter.CrashReporter
 import de.mm20.launcher2.ktx.formatToString
@@ -45,15 +46,21 @@ internal abstract class GeocoderWeatherProvider(
     }
 
     internal suspend fun getLocationName(lat: Double, lon: Double): String {
-        if (!Geocoder.isPresent()) return formatLatLon(lat, lon)
+        return getAddress(lat, lon)?.formatToString() ?: formatLatLon(lat, lon)
+    }
+
+    /**
+     * The reverse geocoded address, for providers that need more of it than its name, such as
+     * the administrative area a coordinate is in.
+     */
+    internal suspend fun getAddress(lat: Double, lon: Double): Address? {
+        if (!Geocoder.isPresent()) return null
         return withContext(Dispatchers.IO) {
             try {
-                Geocoder(context).getFromLocation(lat, lon, 1)
-                    ?.firstOrNull()
-                    ?.formatToString() ?: formatLatLon(lat, lon)
+                Geocoder(context).getFromLocation(lat, lon, 1)?.firstOrNull()
             } catch (e: Exception) {
                 CrashReporter.logException(e)
-                formatLatLon(lat, lon)
+                null
             }
         }
     }
