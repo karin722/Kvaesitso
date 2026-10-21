@@ -1,6 +1,8 @@
 package de.mm20.launcher2
 
 import android.app.Application
+import android.os.Looper
+import android.util.Log
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.decode.SvgDecoder
@@ -56,6 +58,8 @@ class LauncherApplication : Application(), CoroutineScope, ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
 
+        installRelaunchRaceGuard()
+
         if (BuildConfig.BUILD_TYPE == "debug") initDebugMode()
 
         startKoin {
@@ -103,6 +107,56 @@ class LauncherApplication : Application(), CoroutineScope, ImageLoaderFactory {
                 )
             )
         }
+    }
+
+    /**
+     * As the default Home app, this process must not die from AOSP's long-standing
+     * "Can't start activity that is not stopped." race in ActivityThread.handleRelaunchActivityLocally
+     * (still open upstream, see MM2-0/Kvaesitso#790). It fires almost exclusively on the main/Home
+     * activity because Home is relaunched on every task switch, and some OEM skins (notably Samsung
+     * OneUI, see #1464) issue extra overlapping relaunch transactions during their gesture nav
+     * animations that race with it. Left unhandled, this crash repeatedly kills the launcher
+     * process, which is what causes Android to silently unset it as the default Home app -
+     * i.e. exactly the "task switching / returning home becomes unstable" symptom.
+     *
+     * There is no unstable app state to clean up here: the exception is thrown by the platform
+     * before our Activity's relaunch even begins, so nothing of ours has partially run. The only
+     * consequence of the crash is that this one relaunch transaction is dropped, which is also
+     * the only consequence of catching it here - so we resume the main thread's message loop
+     * instead of letting the process die. Anything else is rethrown to the previous handler
+     * (crash reporter) unchanged.
+     */
+    private fun installRelaunchRaceGuard() {
+        val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            if (thread !== Looper.getMainLooper().thread || !isRelaunchRace(throwable)) {
+                previousHandler?.uncaughtException(thread, throwable)
+                return@setDefaultUncaughtExceptionHandler
+            }
+            var pending = throwable
+            while (true) {
+                Log.e("MM20", "Ignored relaunch race, see MM2-0/Kvaesitso#790", pending)
+                try {
+                    Looper.loop()
+                    return@setDefaultUncaughtExceptionHandler
+                } catch (e: Throwable) {
+                    if (!isRelaunchRace(e)) {
+                        previousHandler?.uncaughtException(thread, e)
+                        return@setDefaultUncaughtExceptionHandler
+                    }
+                    pending = e
+                }
+            }
+        }
+    }
+
+    private fun isRelaunchRace(t: Throwable): Boolean {
+        return t is IllegalStateException &&
+                t.message == "Can't start activity that is not stopped." &&
+                t.stackTrace.any {
+                    it.className == "android.app.ActivityThread" &&
+                            it.methodName == "handleRelaunchActivityLocally"
+                }
     }
 
     override fun newImageLoader(): ImageLoader {

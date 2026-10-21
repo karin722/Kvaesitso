@@ -4,8 +4,8 @@ jacksonCore = "2.21.3"
 jacksonDataformatYaml = "2.21.3"
 minSdk = "26"
 compileSdk = "37"
-compileSdkMinor = "0"
-targetSdk = "36"
+compileSdkMinor = "1"
+targetSdk = "37"
 
 pluginSdk = "2.3.0"
 
@@ -30,7 +30,7 @@ androidx-navigation3 = "1.1.6"
 androidx-work = "2.11.2"
 androidx-browser = "1.10.0"
 androidx-palette = "1.0.0"
-androidx-room = "2.8.4"
+androidx-room3 = "3.1.0-alpha01"
 androidx-emojipicker = "1.6.0"
 
 haze = "1.7.2"
@@ -77,9 +77,9 @@ androidx-navigation3-ui = { group = "androidx.navigation3", name = "navigation3-
 
 androidx-activitycompose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidx-activity" }
 
-androidx-room = { group = "androidx.room", name = "room-ktx", version.ref = "androidx-room" }
-androidx-roomruntime = { group = "androidx.room", name = "room-runtime", version.ref = "androidx-room" }
-androidx-roomcompiler = { group = "androidx.room", name = "room-compiler", version.ref = "androidx-room" }
+androidx-room3-runtime = { group = "androidx.room3", name = "room3-runtime", version.ref = "androidx-room3" }
+androidx-room3-compiler = { group = "androidx.room3", name = "room3-compiler", version.ref = "androidx-room3" }
+androidx-sqlite = { group = "androidx.sqlite", name = "sqlite", version = "2.8.0-alpha01" }
 
 androidx-core = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidx-appcompat" }
@@ -133,6 +133,7 @@ tests = ["junit"]
 [plugins]
 android-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }
 android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
+androidx-room3 = { id = "androidx.room3", version.ref = "androidx-room3" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp-gradle-plugin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

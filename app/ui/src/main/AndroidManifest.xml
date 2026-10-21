@@ -21,6 +21,7 @@
             android:stateNotNeeded="true"
             android:theme="@style/LauncherTheme"
             android:enableOnBackInvokedCallback="true"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|density|uiMode|navigation"
             android:windowSoftInputMode="stateHidden|adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

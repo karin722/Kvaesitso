@@ -287,6 +287,9 @@
     <string name="hint_drag_and_drop_reorder">アイテムを押しながらドラッグして並べ替えてください</string>
     <string name="location_open">オープン</string>
     <string name="location_closed">クローズド</string>
+    <string name="action_done">完了</string>
+    <string name="action_install">インストール</string>
+    <string name="action_quit">閉じる</string>
     <string name="preference_value_disabled">無効</string>
     <string name="preference_transliteration_auto">自動</string>
     <string name="preference_japanese_readings">日本語の読みで検索</string>

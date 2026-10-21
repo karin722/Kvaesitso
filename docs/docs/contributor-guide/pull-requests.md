@@ -4,8 +4,6 @@ sidebar_position: 4
 
 # Pull Requests
 
-Pull requests are always welcome.
-
 ## Bug fixes
 
 If you found a bug and wrote a fix for it, just create a pull request.
@@ -14,8 +12,21 @@ If you found a bug and wrote a fix for it, just create a pull request.
 
 For smaller enhancements, just create a pull request.
 
-If you plan to implement any bigger new features, please create an new issue first so we can discuss if and how this feature can be implemented. If you want to work on implementing a feature from an existing issue, please leave a note there to avoid duplicate work.
+If you plan to implement any bigger new features, please create a new issue first so we can discuss
+if and how this feature can be implemented. If you want to work on implementing a feature from an
+existing issue, please leave a note there to avoid duplicate work.
 
 ## License
 
-By submitting any code, you agree to make that code available under the [GNU General Public License v3.0 (and any later version)](https://www.gnu.org/licenses/gpl-3.0.html.en), and that you have the necessary rights to do so. You cannot revoke this later. However, your copyright on your own code remains unaffected by this, you can still license your own code to other parties (under the same or a different license).
+By submitting a contribution to this project, you agree that:
+
+- **You retain ownership.** You keep the copyright and all other rights to your work. You are free
+  to use, modify, or license it elsewhere as you see fit.
+- **You license your contribution under GPL-3.0-or-later.** Your contribution is provided under
+  the same GPL-3.0-or-later license as this project, and you grant the
+  project a worldwide, perpetual, irrevocable, and royalty-free right to use,
+  reproduce, modify, and distribute it under GPL-3.0-or-later.
+- **You confirm you are authorized to contribute.** You warrant that you are the rightful author of
+  the code or have the necessary permission to share it.
+- **You disclose third-party material.** You will inform the maintainers in the pull request if your
+  contribution includes any third-party material that requires special attribution or licensing.
