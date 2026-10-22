@@ -85,7 +85,7 @@ class JapaneseSearchKeysTest {
             primaryFields = JapaneseSearchKeys.keysOf(label) + label.lowercase(),
         )
         assertTrue(
-            "\"$query\" should find \"$label\" (score ${score.score}, ${score.typos} typos)",
+            "\"$query\" should find \"$label\" (score ${score.score})",
             score.score >= 0.8f,
         )
     }

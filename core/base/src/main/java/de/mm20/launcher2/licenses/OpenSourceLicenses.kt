@@ -218,6 +218,14 @@ val OpenSourceLicenses = arrayOf(
         description = "A library to integrate Smartspacer in your app",
         licenseName = R.string.apache_license_name,
         licenseText = R.raw.license_apache_2,
-        url = "https://chrisbanes.github.io/haze",
+        url = "https://github.com/KieronQuinn/Smartspacer",
+    ),
+    OpenSourceLibrary(
+        name = "fzf",
+        description = "A command-line fuzzy finder. Its fuzzy matching algorithm is used in search.",
+        licenseName = R.string.mit_license_name,
+        licenseText = R.raw.license_mit,
+        url = "https://github.com/junegunn/fzf",
+        copyrightNote = "Copyright (c) 2013-2026 Junegunn Choi",
     )
 )

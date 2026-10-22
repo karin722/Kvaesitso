@@ -62,7 +62,7 @@ class OwncloudClient(val context: Context) {
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             if (!catchErrors) throw e
             File(context.filesDir, "../shared_prefs/owncloud.xml").delete()
             return createPreferences(false)
@@ -168,9 +168,13 @@ class OwncloudClient(val context: Context) {
             return getUserName()
         }
 
-        if (response.status != HttpStatusCode.OK) {
+        if (response.status == HttpStatusCode.Unauthorized) {
             logout()
             return null
+        }
+        if (response.status != HttpStatusCode.OK) {
+            // Don't log out on temporary server errors
+            return getUserName()
         }
         val body = try {
             response.body<UserReponse>()

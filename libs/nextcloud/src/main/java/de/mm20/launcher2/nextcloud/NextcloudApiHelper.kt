@@ -25,6 +25,7 @@ import io.ktor.client.request.post
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.URLParserException
 import io.ktor.http.parameters
 import io.ktor.http.path
 import io.ktor.http.takeFrom
@@ -68,7 +69,7 @@ class NextcloudApiHelper(val context: Context) {
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             if (!catchErrors) throw e
             File(context.filesDir, "../shared_prefs/nextcloud.xml").delete()
             return createPreferences(false)
@@ -98,6 +99,14 @@ class NextcloudApiHelper(val context: Context) {
                 header(HttpHeaders.UserAgent, context.getString(R.string.app_name))
             }
         } catch (e: IOException) {
+            Log.e("NextcloudApiHelper", "HTTP error", e)
+            null
+        } catch (e: URLParserException) {
+            // Invalid URL
+            Log.e("NextcloudApiHelper", "HTTP error", e)
+            null
+        } catch (e: IllegalArgumentException) {
+            // Invalid URL (rejected by OkHttp, e.g. invalid host)
             Log.e("NextcloudApiHelper", "HTTP error", e)
             null
         }
@@ -190,9 +199,13 @@ class NextcloudApiHelper(val context: Context) {
             return getUserName()
         }
 
-        if (response.status != HttpStatusCode.OK) {
+        if (response.status == HttpStatusCode.Unauthorized) {
+            // Token has been revoked
             logout()
             return null
+        }
+        if (response.status != HttpStatusCode.OK) {
+            return getUserName()
         }
         val body = try {
             response.body<UserReponse>()

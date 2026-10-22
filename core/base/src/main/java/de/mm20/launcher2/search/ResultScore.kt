@@ -1,63 +1,14 @@
 package de.mm20.launcher2.search
 
 import com.aallam.similarity.JaroWinkler
+import de.mm20.launcher2.search.fuzzy.FzfMatcher
 
+/**
+ * How well a search result matches a query, between 0 and 1. Higher is better. Any score of at
+ * least [MatchThreshold] is a match.
+ */
 @JvmInline
-value class ResultScore private constructor(private val packed: Long) : Comparable<ResultScore> {
-    constructor(
-        isPrefix: Boolean,
-        isSubstring: Boolean,
-        isPrimary: Boolean,
-        similarity: Float,
-        typos: Int,
-    ) : this(
-        (similarity.toRawBits().toLong() and 0xffffffffL) or
-                (if (isPrefix) (1L shl 32) else 0) or
-                (if (isSubstring) (1L shl 33) else 0) or
-                (if (isPrimary) (1L shl 34) else 0) or
-                (typos.coerceIn(0, MaxTypos).toLong() shl 35)
-    )
-
-    /**
-     * Whether the query is a prefix of the result. May be off by up to [typos] characters.
-     */
-    val isPrefix: Boolean
-        get() = (packed and (1L shl 32)) != 0L
-
-    /**
-     * Whether the query is a substring of the result. May be off by up to [typos] characters.
-     */
-    val isSubstring: Boolean
-        get() = (packed and (1L shl 33)) != 0L
-
-    /**
-     * Whether the query was matched against a primary field.
-     */
-    val isPrimary: Boolean
-        get() = (packed and (1L shl 34)) != 0L
-
-    /**
-     * How many characters had to be inserted, removed or replaced to match the query against the
-     * result. Zero for a literal match.
-     */
-    val typos: Int
-        get() = ((packed ushr 35) and 0xfL).toInt()
-
-    /**
-     * The Jaro-Winkler similarity between the query and the result.
-     */
-    val similarity: Float
-        get() = Float.fromBits((packed and 0xffffffffL).toInt())
-
-    /**
-     * A total score for the result, combining the similarity with additional factors.
-     * The score is normalized to be between 0 and 1.
-     */
-    val score: Float
-        get() = (similarity + (if (isPrefix) 0.2f else 0f) + (if (isSubstring) 0.8f else 0f))
-            .coerceIn(0f, 1f) *
-                (if (isPrimary) 1f else 0.8f) *
-                (1f - TypoPenalty * typos)
+value class ResultScore(val score: Float) : Comparable<ResultScore> {
 
     override fun compareTo(other: ResultScore): Int {
         return score.compareTo(other.score)
@@ -65,48 +16,39 @@ value class ResultScore private constructor(private val packed: Long) : Comparab
 
     companion object {
         /**
-         * Jaro-Winkler is stateless, but not documented to be thread safe, so every thread that
-         * scores results gets its own instance instead of allocating one per call.
+         * Scores [query] against the best of [primaryFields] and [secondaryFields]. Queries and
+         * fields are expected to be normalized (see [StringNormalizer]) by the caller.
+         *
+         * A field matches if it contains the query's characters in order (an fzf-style
+         * subsequence match, e.g. "ytm" in "yt music"), or failing that, if it is close enough to
+         * the query to be a typo of it (Jaro-Winkler similarity, e.g. "settimgs" for "settings").
+         *
+         * Every match lands in one of three non-overlapping bands, so that the kind of evidence
+         * decides the order before the similarity within a band does:
+         *
+         * - `[0.95, 1]` Strong literal match: the characters are all there, tightly clustered or at
+         *   word boundaries. An exact match scores 1.
+         * - `[0.90, 0.95)` Weak literal match: the characters are all there, but scattered.
+         * - `[0.80, 0.90)` Typo match: some typed character is not in the field at all, so this is
+         *   a guess at a correction.
+         *
+         * All bands sit above [MatchThreshold], where the previous substring-or-similar scorer put
+         * its matches too, so the balance against usage weights in ranking is unchanged.
          */
-        private val jaroWinklerLocal = ThreadLocal.withInitial { JaroWinkler() }
-
-        /**
-         * Row buffers for [editDistance]. Scoring a single search runs the algorithm once per
-         * result, field and spelling, so the rows are reused instead of being allocated every time.
-         */
-        private val scratchLocal = ThreadLocal.withInitial { Scratch() }
-
-        /**
-         * The highest number of typos that can be packed into a score. A result matched with the
-         * highest number of typos still scores above the 0.8 threshold that most providers use.
-         */
-        const val MaxTypos = 3
-
-        /**
-         * How much a single typo costs, relative to a literal match. Small enough that a literal
-         * match always wins over a corrected one, large enough to break ties.
-         */
-        private const val TypoPenalty = 0.06f
-
-        /**
-         * How many typos are tolerated for a query of the given length. Short queries are matched
-         * literally: with only two or three characters to go by, a single correction would match
-         * almost anything.
-         */
-        fun maxTyposFor(queryLength: Int): Int = when {
-            queryLength <= 3 -> 0
-            queryLength <= 6 -> 1
-            queryLength <= 10 -> 2
-            else -> MaxTypos
-        }
-
         fun from(
             query: String,
             primaryFields: Iterable<String> = emptyList(),
             secondaryFields: Iterable<String> = emptyList(),
-            maxTypos: Int = maxTyposFor(query.length),
         ): ResultScore {
-            return from(listOf(query), primaryFields, secondaryFields, maxTypos)
+            // An empty query is a prefix of everything.
+            if (query.isEmpty()) return ResultScore(1f)
+
+            val maxScore = FzfMatcher.maxScoreFor(query)
+            val bestPrimary = primaryFields.maxOfOrNull { scoreField(query, it, maxScore) } ?: 0f
+            val bestSecondary = secondaryFields.maxOfOrNull {
+                scoreField(query, it, maxScore) * SecondaryFieldFactor
+            } ?: 0f
+            return ResultScore(maxOf(bestPrimary, bestSecondary))
         }
 
         /**
@@ -117,98 +59,90 @@ value class ResultScore private constructor(private val packed: Long) : Comparab
             queries: Iterable<String>,
             primaryFields: Iterable<String> = emptyList(),
             secondaryFields: Iterable<String> = emptyList(),
-            maxTypos: Int? = null,
         ): ResultScore {
-            val jaroWinkler = jaroWinklerLocal.get()
             var best = Zero
-            var bestScore = best.score
             for (query in queries) {
-                val typos = (maxTypos ?: maxTyposFor(query.length)).coerceIn(0, MaxTypos)
-                for (term in primaryFields) {
-                    val score = score(jaroWinkler, query, term, true, typos)
-                    val value = score.score
-                    if (value > bestScore) {
-                        best = score
-                        bestScore = value
-                        // A primary field matched literally, nothing can score higher than this.
-                        if (bestScore >= 1f) return best
-                    }
-                }
-                for (term in secondaryFields) {
-                    val score = score(jaroWinkler, query, term, false, typos)
-                    val value = score.score
-                    if (value > bestScore) {
-                        best = score
-                        bestScore = value
-                    }
+                val score = from(query, primaryFields, secondaryFields)
+                if (score > best) {
+                    best = score
+                    // Nothing can score higher than an exact match.
+                    if (best.score >= 1f) return best
                 }
             }
             return best
         }
 
-        private fun score(
-            jaroWinkler: JaroWinkler,
-            query: String,
-            term: String,
-            isPrimary: Boolean,
-            maxTypos: Int,
-        ): ResultScore {
-            val similarity = jaroWinkler.similarity(query, term).toFloat()
-            if (query in term) {
-                return ResultScore(
-                    isPrefix = term.startsWith(query),
-                    isSubstring = true,
-                    isPrimary = isPrimary,
-                    similarity = similarity,
-                    typos = 0,
-                )
+        private fun scoreField(query: String, term: String, maxScore: Int): Float {
+            val literal = FzfMatcher.normalizedScore(query, term, maxScore)
+            if (literal > 0f) {
+                return if (literal >= StrongLiteralThreshold) {
+                    lerp(
+                        StrongLiteralBand,
+                        1f,
+                        (literal - StrongLiteralThreshold) / (1f - StrongLiteralThreshold)
+                    )
+                } else {
+                    lerp(WeakLiteralBand, StrongLiteralBand, literal / StrongLiteralThreshold)
+                }
             }
-            if (maxTypos == 0 || query.length - term.length > maxTypos) {
-                return ResultScore(
-                    isPrefix = false,
-                    isSubstring = false,
-                    isPrimary = isPrimary,
-                    similarity = similarity,
-                    typos = 0,
-                )
-            }
-            val substringDistance = editDistance(query, term, anchored = false, limit = maxTypos)
-            if (substringDistance > maxTypos) {
-                return ResultScore(
-                    isPrefix = false,
-                    isSubstring = false,
-                    isPrimary = isPrimary,
-                    similarity = similarity,
-                    typos = 0,
-                )
-            }
-            val prefixDistance = editDistance(query, term, anchored = true, limit = substringDistance)
-            return ResultScore(
-                isPrefix = prefixDistance <= substringDistance,
-                isSubstring = true,
-                isPrimary = isPrimary,
-                similarity = similarity,
-                typos = substringDistance,
+
+            // With only one or two characters, there is nothing to base a correction on.
+            if (query.length < MinTypoQueryLength) return 0f
+
+            val similarity = jaroWinklerLocal.get()!!.similarity(query, term).toFloat()
+            // Similarity is only 1 for identical strings, which the literal path has already
+            // caught, so this stays below WeakLiteralBand.
+            val bySimilarity = if (similarity < MatchThreshold) 0f else lerp(
+                TypoBand,
+                WeakLiteralBand,
+                (similarity - MatchThreshold) / (1f - MatchThreshold)
             )
+
+            // Jaro-Winkler compares whole strings, so a typo in one word of a longer label
+            // ("gooble" in "google chrome") is caught by the edit distance to the closest part of
+            // the label instead.
+            val maxTypos = maxTyposFor(query.length)
+            if (maxTypos == 0 || query.length - term.length > maxTypos) return bySimilarity
+            val typos = editDistance(query, term, limit = maxTypos)
+            if (typos > maxTypos) return bySimilarity
+            // At least one typo, since the literal path would have caught an exact substring, so
+            // this stays below WeakLiteralBand as well.
+            val byEditDistance = lerp(
+                TypoBand,
+                WeakLiteralBand,
+                1f - typos.toFloat() / (MaxTypos + 1)
+            )
+            return maxOf(bySimilarity, byEditDistance)
         }
 
         /**
-         * Edit distance of [query] to the best matching part of [term]. If [anchored] is true,
-         * that part has to start at the beginning of [term], otherwise it may start anywhere.
+         * How many typos are tolerated for a query of the given length. Short queries are matched
+         * literally: with only two or three characters to go by, a single correction would match
+         * almost anything.
+         */
+        internal fun maxTyposFor(queryLength: Int): Int = when {
+            queryLength <= 3 -> 0
+            queryLength <= 6 -> 1
+            queryLength <= 10 -> 2
+            else -> MaxTypos
+        }
+
+        /**
+         * Edit distance of [query] to the best matching part of [term], which may start anywhere.
          *
          * Swapping two neighbouring characters counts as a single edit (Damerau-Levenshtein),
          * because that is what a mistyped word usually looks like. Aborts as soon as the distance
          * is known to exceed [limit].
          */
-        private fun editDistance(query: String, term: String, anchored: Boolean, limit: Int): Int {
+        private fun editDistance(query: String, term: String, limit: Int): Int {
             val n = query.length
             val m = term.length
             if (n == 0) return 0
-            val rows = scratchLocal.get().forSize(m + 1)
+            val rows = scratchLocal.get()!!.forSize(m + 1)
             var beforePrevious = rows.first
             var previous = rows.second
             var current = rows.third
-            for (j in 0..m) previous[j] = if (anchored) j else 0
+            for (j in 0..m) previous[j] = 0
             for (i in 1..n) {
                 current[0] = i
                 var rowMin = current[0]
@@ -255,23 +189,58 @@ value class ResultScore private constructor(private val packed: Long) : Comparab
             }
         }
 
-        val Zero = ResultScore(
-            isPrefix = false,
-            isSubstring = false,
-            isPrimary = false,
-            similarity = 0f,
-            typos = 0,
-        )
+        /**
+         * Jaro-Winkler is stateless, but not documented to be thread safe, so every thread that
+         * scores results gets its own instance instead of allocating one per call.
+         */
+        private val jaroWinklerLocal = ThreadLocal.withInitial { JaroWinkler() }
 
-        val Unspecified = ResultScore(
-            isPrefix = false,
-            isSubstring = false,
-            isPrimary = false,
-            similarity = Float.NaN,
-            typos = 0,
-        )
+        /**
+         * Row buffers for [editDistance]. Scoring a single search runs the algorithm once per
+         * result, field and spelling, so the rows are reused instead of being allocated every time.
+         */
+        private val scratchLocal = ThreadLocal.withInitial { Scratch() }
+
+        /**
+         * The highest number of typos tolerated for any query, see [maxTyposFor].
+         */
+        internal const val MaxTypos = 3
+
+        private fun lerp(start: Float, end: Float, fraction: Float): Float {
+            return start + (end - start) * fraction.coerceIn(0f, 1f)
+        }
+
+        /**
+         * The lowest score that counts as a match.
+         */
+        internal const val MatchThreshold = 0.8f
+
+        /**
+         * Normalized fzf score from which a literal match is considered strong.
+         */
+        private const val StrongLiteralThreshold = 0.5f
+
+        private const val StrongLiteralBand = 0.95f
+        private const val WeakLiteralBand = 0.9f
+        private const val TypoBand = MatchThreshold
+
+        private const val MinTypoQueryLength = 3
+
+        /**
+         * How much a match on a secondary field is worth relative to the same match on a primary
+         * field.
+         */
+        private const val SecondaryFieldFactor = 0.8f
+
+        val Zero = ResultScore(0f)
+
+        /**
+         * No score has been computed yet. Results that carry this are scored lazily when they are
+         * ranked, since not every repository scores its own results.
+         */
+        val Unspecified = ResultScore(Float.NaN)
     }
 }
 
-inline val ResultScore.isUnspecified : Boolean
-    get() = this == ResultScore.Unspecified
+inline val ResultScore.isUnspecified: Boolean
+    get() = score.isNaN()
