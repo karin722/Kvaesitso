@@ -19,7 +19,7 @@ on:
       build_type:
         description: 'Build type to build'
         type: choice
-        default: 'debug'
+        default: 'release'
         options:
           - debug
           - release
@@ -47,7 +47,9 @@ jobs:
         id: variant
         env:
           FLAVOR: ${{ inputs.variant || 'default' }}
-          BUILD_TYPE: ${{ inputs.build_type || 'debug' }}
+          # Pushes build a release APK, so that every build can be installed over the one before it
+          # as an update. Debug builds are only made on request.
+          BUILD_TYPE: ${{ inputs.build_type || 'release' }}
         run: |
           capitalize() { echo "$(echo "${1:0:1}" | tr '[:lower:]' '[:upper:]')${1:1}"; }
           # The build date, plus a two digit run counter so that two builds on the same day
